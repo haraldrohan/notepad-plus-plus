@@ -313,6 +313,7 @@ public:
 	void addGenericText(const wchar_t * text2Append, intptr_t* mstart, intptr_t* mend) const;
 	intptr_t replaceTarget(const std::string& str2replace, intptr_t fromTargetPos = -1, intptr_t toTargetPos = -1) const;
 	intptr_t replaceTarget(const wchar_t * str2replace, intptr_t fromTargetPos = -1, intptr_t toTargetPos = -1) const;
+	intptr_t replaceTarget(const std::wstring& str2replace, intptr_t fromTargetPos = -1, intptr_t toTargetPos = -1) const;
 	intptr_t replaceTargetRegExMode(const wchar_t * re, intptr_t fromTargetPos = -1, intptr_t toTargetPos = -1) const;
 	void showAutoCompletion(size_t lenEntered, const std::string& list) const;
 	void showCallTip(size_t startPos, const std::string& def) const;

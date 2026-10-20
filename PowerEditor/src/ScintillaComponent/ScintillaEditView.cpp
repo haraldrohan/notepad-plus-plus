@@ -2717,11 +2717,15 @@ void ScintillaEditView::getText(char *dest, size_t start, size_t end) const
 wstring ScintillaEditView::getGenericTextAsString(size_t start, size_t end) const
 {
 	assert(end > start);
-	const size_t bufSize = end - start + 1;
-	wchar_t *buf = new wchar_t[bufSize];
-	getGenericText(buf, bufSize, start, end);
-	wstring text = buf;
-	delete[] buf;
+	const size_t lenA = end - start;
+	auto bufA = std::make_unique<char[]>(lenA + 1);
+	getText(bufA.get(), start, end);
+
+	// Convert with explicit length, so that NUL characters in the text don't truncate it
+	const UINT cp = static_cast<UINT>(execute(SCI_GETCODEPAGE));
+	const int lenW = ::MultiByteToWideChar(cp, 0, bufA.get(), static_cast<int>(lenA), nullptr, 0);
+	wstring text(lenW, L'\0');
+	::MultiByteToWideChar(cp, 0, bufA.get(), static_cast<int>(lenA), text.data(), lenW);
 	return text;
 }
 
@@ -2949,6 +2953,21 @@ intptr_t ScintillaEditView::replaceTarget(const wchar_t * str2replace, intptr_t 
 	size_t cp = execute(SCI_GETCODEPAGE);
 	const char *str2replaceA = wmc.wchar2char(str2replace, cp);
 	return execute(SCI_REPLACETARGET, static_cast<WPARAM>(-1), reinterpret_cast<LPARAM>(str2replaceA));
+}
+
+intptr_t ScintillaEditView::replaceTarget(const std::wstring& str2replace, intptr_t fromTargetPos, intptr_t toTargetPos) const
+{
+	if (fromTargetPos != -1 || toTargetPos != -1)
+	{
+		execute(SCI_SETTARGETRANGE, fromTargetPos, toTargetPos);
+	}
+
+	// Convert and replace with explicit length, so that NUL characters in the text don't truncate it
+	WcharMbcsConvertor& wmc = WcharMbcsConvertor::getInstance();
+	size_t cp = execute(SCI_GETCODEPAGE);
+	int lenA = 0;
+	const char *str2replaceA = wmc.wchar2char(str2replace.c_str(), cp, static_cast<int>(str2replace.length()), &lenA);
+	return execute(SCI_REPLACETARGET, lenA, reinterpret_cast<LPARAM>(str2replaceA));
 }
 
 intptr_t ScintillaEditView::replaceTargetRegExMode(const wchar_t * re, intptr_t fromTargetPos, intptr_t toTargetPos) const
@@ -4508,7 +4527,7 @@ void ScintillaEditView::sortLines(size_t fromLine, size_t toLine, ISorter* pSort
 	}
 	if (text != joined)
 	{
-		replaceTarget(joined.c_str(), startPos, endPos);
+		replaceTarget(joined, startPos, endPos);
 	}
 }
 
@@ -4863,7 +4882,7 @@ void ScintillaEditView::removeAnyDuplicateLines()
 		}
 		if (text != joined)
 		{
-			replaceTarget(joined.c_str(), startPos, endPos);
+			replaceTarget(joined, startPos, endPos);
 		}
 	}
 }
